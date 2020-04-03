@@ -1,5 +1,6 @@
 // @ts-check
 
+const { emoji } = require("./emoji");
 const { workerData } = require("worker_threads");
 const { dev, options } = require("./cert");
 const { createServer } = require("https");
@@ -135,7 +136,7 @@ function resetAll() {
 }
 
 function foundPair() {
-  const flipped = [];
+  let flipped = [];
   matrix.forEach(row =>
     row.forEach(card => {
       if (card.flipped && !card.complete) {
@@ -146,7 +147,15 @@ function foundPair() {
   if (flipped.length < 2) {
     return false;
   }
-  const res = flipped[0].img === flipped[1].img;
+  flipped.forEach(card => {
+    card.emojiCode =
+      card.emojiCode ||
+      card.img
+        .split("")
+        .map(e => e.charCodeAt(0))
+        .join("");
+  });
+  const res = flipped[0].emojiCode === flipped[1].emojiCode;
   if (res) {
     flipped[0].complete = true;
     flipped[1].complete = true;
@@ -178,13 +187,13 @@ function initMatrix(size) {
     available.splice(idx2, 1);
   }
 
-  const base = 1018; // ~~(Math.random() * 21092);
+  const base = ~~(Math.random() * emoji.length);
   const vals = Array.from(pairs.values());
   return new Array(size).fill(null).map((_, row) =>
     new Array(size).fill(null).map((_, col) => {
       const nr = row * size + col;
       const id = Math.floor(vals.findIndex(i => i === nr) / 2);
-      return { flipped: false, img: base + id, complete: false };
+      return { flipped: false, img: emoji[toBytes(base + id)], complete: false };
     })
   );
 }
@@ -216,12 +225,6 @@ function toBytes(input) {
     .createHmac("sha256", input + "")
     .update("i".repeat(15))
     .digest("hex")
-    .split("");
-
-  const a2 = a1.splice(0, 32);
-  return a1.map((t, i) => parseInt(t + a2[i], 16));
-}
-
-function toHex(...arg) {
-  return arg.map(n => Math.min(Math.max(n, 0), 255).toString(16)).join("");
+    .slice(0, 4);
+  return parseInt(a1, 16) % emoji.length;
 }

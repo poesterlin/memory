@@ -18,7 +18,7 @@
   socket.on("disconnect", () => {
     running.set(false);
     port.set(0);
-    alert('player disconnected')
+    alert("player disconnected");
   });
 
   let myTurn = false;
@@ -76,13 +76,13 @@
     padding: 0;
     margin: 0;
     border: 0;
-    user-select: none;
-     max-width: calc(22vw - 5px);
+    max-width: calc(22vw - 5px);
     max-height: calc(22vw - 5px);
-    position: relative;
     box-shadow: 5px 5px 10px #70adad, -5px -5px 10px #8cd7d7;
     background: linear-gradient(145deg, #71afaf, #87d0d0);
     border-radius: 12px;
+    font-size: 40px;
+    user-select: none;
   }
 
   button:hover:not(.noHover) {
@@ -111,7 +111,7 @@
   }
 
   .hide {
-    opacity: 0;
+    color: transparent;
   }
 
   #flips {
@@ -140,15 +140,6 @@
     font-weight: bold;
   }
 
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    user-select: none;
-    pointer-events: none;
-    border-radius: 12px;
-  }
-
   .background {
     background: rgba(0, 0, 0, 0.534);
     position: fixed;
@@ -159,7 +150,7 @@
   }
 
   .center {
-   margin: auto;
+    margin: auto;
     background: #7ec2c2;
     position: fixed;
     top: 0;
@@ -218,12 +209,11 @@
     <tr>
       {#each row as item, colIdx}
         <td>
-          <button class:noHover={!myTurn} on:click={() => flip(rowIdx, colIdx)}>
-            <!-- <img src="{server}/{item.img}" alt="" /> -->
-            <img
-              class:hide={!item.flipped}
-              src="https://picsum.photos/id/{item.img}/200/200"
-              alt="" />
+          <button
+            class:noHover={!myTurn}
+            class:hide={!item.flipped}
+            on:click={() => flip(rowIdx, colIdx)}>
+            {item.img}
           </button>
         </td>
       {/each}

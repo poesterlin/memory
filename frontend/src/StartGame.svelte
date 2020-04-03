@@ -126,7 +126,7 @@
   }
 </style>
 
-<h3>Online Memory!!</h3>
+<h3>Online Emoji Memory!!</h3>
 
 <button class="card" on:click={() => createNewGameInstace(false)}>
   Start Game
