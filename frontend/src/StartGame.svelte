@@ -1,5 +1,5 @@
 <script>
-  import { port, running } from "./store.js";
+  import { port, running, registered } from "./store.js";
   import Wait from "./Wait.svelte";
 
   let started = false;
@@ -146,6 +146,6 @@
   </div>
 </div>
 
-{#if loading}
+{#if loading && !$registered}
   <Wait bind:isPrivate={coppied} />
 {/if}

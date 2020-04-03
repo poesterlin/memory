@@ -19,35 +19,32 @@ app.use(cors());
 const { Worker } = require("worker_threads");
 const getPort = require("get-port");
 
-const available = [];
+let available = undefined;
 
 app.use(express.static("./frontend/public"));
 
-app.get("/newInstance", async function(req, res) {
+app.get("/newInstance", async function (req, res) {
   let port;
-  if (available.length === 0 || req.query.private === true) {
+  if (!available || req.query.private === true) {
     const newPort = await getPort({ port: getPort.makeRange(8000, 9000) });
     if (!req.query.private) {
-      available.push(newPort);
+      available = { port: newPort, players: 1 };
     }
 
     //spawn new worker and return port
-    const worker = new Worker("./backend/worker.js", {
-      workerData: { port: newPort },
-      // TODO: set limits
-      resourceLimits: {}
-    });
-    worker.on("exit", s => console.log("exit", s));
+    const worker = new Worker("./backend/worker.js", { workerData: { port: newPort } });
+    worker.on("exit", () => (available = undefined));
 
     port = newPort;
   } else {
-    port = available.pop(); // return existing worker with only one player
+    port = available.port; // return existing worker with only one player
+    available.players += 1;
   }
 
   res.json({ port });
 });
 
 const defaultPort = dev ? 80 : 443;
-server.listen(process.env.PORT || defaultPort, function() {
+server.listen(process.env.PORT || defaultPort, function () {
   console.log(`Memory app listening on port ${process.env.PORT || defaultPort}!`);
 });

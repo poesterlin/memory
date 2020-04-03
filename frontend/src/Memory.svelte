@@ -1,19 +1,27 @@
 <script>
-  import { url, id as playerId, running, port } from "./store.js";
+  import {
+    url,
+    id as playerId,
+    running,
+    port,
+    myTeam,
+    isMaster
+  } from "./store.js";
+
   import io from "socket.io-client";
   import { get } from "svelte/store";
 
   const server = get(url);
   const socket = io(server);
-
   const id = get(playerId);
 
+  // console.log([url, playerId, running, port, myTeam, isMaster].map(get))
+
   let matrix = [];
+  const master = get(isMaster);
 
   socket.on("matrix", mat => {
     matrix = mat;
-    checkIfWon();
-    isDone();
   });
   socket.on("disconnect", () => {
     running.set(false);
@@ -21,51 +29,30 @@
     alert("player disconnected");
   });
 
+  let done = false;
+  let hasWon = 0;
+  socket.on("results", res => {
+    done = true;
+    hasWon = myTeam === res;
+  });
+
   let myTurn = false;
-  let flips = 0;
-  let ownPoints = 0;
-  let oponentPoints = 0;
-  let lastFlip = {};
-  socket.on("turn", ({ player, toFlip, players }) => {
-    myTurn = player === id;
-    flips = toFlip;
-    ownPoints = players.find(p => p.id === id).points;
-    oponentPoints = players.find(p => p.id !== id).points;
-    if (!myTurn) {
-      lastFlip = {};
-    }
+  socket.on("turn", ({ turn }) => {
+    myTurn = get(myTeam) === turn;
   });
 
   function flip(row, column) {
-    if (
-      !myTurn ||
-      flips === 0 ||
-      (lastFlip.row === row && lastFlip.column === column)
-    ) {
+    if (!myTurn || matrix[row][column].done || master) {
       return;
     }
-    lastFlip = { row, column };
-    flips--;
-    socket.emit("flip", { row, column, id });
-    checkIfWon();
-    isDone();
-  }
-
-  let hasWon = 0;
-  function checkIfWon() {
-    hasWon = Math.sign(ownPoints - oponentPoints);
-  }
-
-  let done = false;
-  function isDone() {
-    done =
-      matrix.flat().filter(tile => tile.flipped).length ===
-      matrix.flat().length;
+    socket.emit("flip", { row, column, team: get(myTeam) });
   }
 
   function replay() {
     done = false;
     socket.emit("replay");
+    running.set(false);
+    port.set(0);
   }
 </script>
 
@@ -76,17 +63,16 @@
     padding: 0;
     margin: 0;
     border: 0;
-    max-width: calc(22vw - 5px);
-    max-height: calc(22vw - 5px);
-    box-shadow: 5px 5px 10px #70adad, -5px -5px 10px #8cd7d7;
-    background: linear-gradient(145deg, #71afaf, #87d0d0);
+    max-width: calc(18vw - 5px);
+    max-height: calc(18vw - 5px);
     border-radius: 12px;
-    font-size: 40px;
+    font-size: 30px;
     user-select: none;
+    color: black;
   }
 
-  button:hover:not(.noHover) {
-    box-shadow: inset 5px 5px 10px #70adad55, inset -5px -5px 10px #8cd7d777 !important;
+  button:hover {
+    box-shadow: 4px 4px 7px #00000045 !important;
   }
 
   td {
@@ -110,34 +96,13 @@
     text-shadow: 3px 4px 8px #00000012;
   }
 
-  .hide {
-    color: transparent;
-  }
-
-  #flips {
-    color: #f0f0f0;
-    font-size: 14px;
-    flex: 1 3 10%;
-    width: 230px;
-    text-align: right;
-    min-width: max-content;
-  }
-
   #text {
     min-width: 230px;
     max-width: 90vw;
   }
-  #points {
-    flex: 1 1 calc(100% - 460px);
-    min-width: max-content;
-  }
   #text {
     flex: 1 1 35%;
     min-width: 230px;
-  }
-  #points > span {
-    margin: 0 10px;
-    font-weight: bold;
   }
 
   .background {
@@ -189,20 +154,31 @@
   #replay:hover {
     background: #97d8d8;
   }
+
+  .card0, .card1, .card2{
+    color: white !important;
+  }
+
+  .card0 {
+    background: gray !important;
+  }
+  .card1 {
+    background: darkred !important;
+  }
+  .card2 {
+    background: blue !important;
+  }
+  .card3 {
+    background: black !important;
+    color: red !important;
+  }
 </style>
 
 <div class="header">
   <span id="text">
-    {myTurn ? 'It`s my turn. Flip some cards!' : 'Wait for your oponent to draw...'}
+    {myTurn ? 'Your teams turn. Flip some cards!' : 'Wait for your oponents to draw...'}
   </span>
-  <span id="points">
-    Points:
-    <span>{ownPoints}</span>
-    vs
-    <span>{oponentPoints}</span>
-  </span>
-
-  <span id="flips" class:hide={!myTurn}>Flips left: {flips}</span>
+  <span>{$myTeam === 1 ? 'You`re Red' : 'You`re Blue'}</span>
 </div>
 <table>
   {#each matrix as row, rowIdx}
@@ -210,10 +186,9 @@
       {#each row as item, colIdx}
         <td>
           <button
-            class:noHover={!myTurn}
-            class:hide={!item.flipped}
+            class={item.done || master ? 'card' + item.team : ''}
             on:click={() => flip(rowIdx, colIdx)}>
-            {item.img}
+            {item.word}
           </button>
         </td>
       {/each}
@@ -224,11 +199,9 @@
 {#if done}
   <div class="background">
     <div class="center">
-      {#if hasWon === 1}
+      {#if hasWon}
         <span>🥳🥳🥳 You have won!!</span>
-      {:else if hasWon === 0}
-        <span>Its a draw 🤷‍♀️</span>
-      {:else if hasWon === -1}
+      {:else}
         <span>You lost... 😞</span>
       {/if}
       <button id="replay" on:click={replay}>replay</button>

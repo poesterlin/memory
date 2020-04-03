@@ -1,7 +1,8 @@
 <script>
-  import { running } from "./store.js";
+  import { running, registered } from "./store.js";
   import StartGame from "./StartGame.svelte";
   import Memory from "./Memory.svelte";
+  import Players from "./Players.svelte";
 
   let game = { running: false };
   running.subscribe(val => (game.running = val));
@@ -15,6 +16,8 @@
 
 {#if game.running}
   <Memory />
+{:else if $registered}
+  <Players />
 {:else}
   <StartGame />
 {/if}
