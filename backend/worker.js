@@ -43,6 +43,7 @@ app.get("/close", (_req, res) => {
 });
 
 app.get("/players", (_req, res) => {
+  started = started && players.filter((p) => p.master === true).length === 2;
   res.json({ players, started });
 });
 
@@ -68,13 +69,16 @@ app.post("/elevate", (req, res) => {
   players.filter((p) => p.team === newP.team).forEach((p) => (p.master = false));
   newP.master = true;
   res.json({ players });
+  try {
+    updateTurns();
+  } catch {}
 });
 
 server.listen(workerData.port, function () {
   console.log("worker started", workerData);
 });
 
-const players = [];
+let players = [];
 let started = false;
 let turn = 1;
 let matrix = initMatrix(workerData.size || 5);
@@ -84,6 +88,10 @@ io.on("connect", function (socket) {
   updateMatrix();
   updateTurns();
 
+  socket.on("next", function () {
+    turn = turn === 1 ? 2 : 1;
+    updateTurns();
+  });
   socket.on("flip", function ({ row, column, team }) {
     if (players.length < 1) {
       return;
@@ -127,33 +135,40 @@ io.on("connect", function (socket) {
   });
 
   socket.on("replay", () => {
-    matrix = initMatrix(workerData.size || 4);
+    matrix = initMatrix(workerData.size || 5);
     updateMatrix();
-    players.forEach((p) => (p.points = 0));
     updateTurns();
   });
 
   socket.on("disconnect", () => {
-    console.log("disconnected");
-    process.exit();
+    reRegister();
+    players = [];
+  });
+
+  socket.on("register", async (player) => {
+    players.push(player);
+    await new Promise((r) => setTimeout(r, 1000));
+    updateTurns();
   });
 });
 
-io.on("disconnect", () => {
-  console.log("disconnected");
-  process.exit();
-});
-
 function updateTurns() {
-  io.in(room).emit("turn", { turn });
+  io.in(room).emit("turn", { turn, players });
 }
 
 function replay(team) {
   io.to(room).emit("results", team);
+  matrix.forEach((row) => row.forEach((cell) => (cell.done = true)));
+  updateMatrix();
+  started = false;
 }
 
 function updateMatrix() {
   io.to(room).emit("matrix", matrix);
+}
+
+function reRegister() {
+  io.to(room).emit("reregister");
 }
 
 /**
@@ -162,7 +177,7 @@ function updateMatrix() {
  */
 function initMatrix(size) {
   const vals = [];
-  for (let idx = 0; idx < Math.ceil(size ** 2 / 2); idx++) {
+  for (let idx = 0; idx < Math.ceil(size ** 2); idx++) {
     const position = ~~(Math.random() * words.length);
     const value = words[position];
     vals.push(value);
@@ -170,7 +185,7 @@ function initMatrix(size) {
   }
 
   const starter = Math.round(Math.random()) === 1;
-  turn = starter ? 1 : 0;
+  turn = starter ? 1 : 2;
 
   const teams = shuffle(new Array(size ** 2).fill(undefined).map((_, i) => i));
 
@@ -184,7 +199,7 @@ function initMatrix(size) {
     new Array(size).fill(null).map((_, col) => {
       const nr = row * size + col;
       const team = team1.includes(nr) ? 1 : team2.includes(nr) ? 2 : forbidden === nr ? 3 : 0;
-      return { word: words[nr], team, done: false };
+      return { word: vals[nr], team, done: false };
     })
   );
 }
@@ -192,7 +207,7 @@ function initMatrix(size) {
 setTimeout(() => {
   console.log("exit due to timeout");
   process.exit();
-}, 1000 * 60 * 60);
+}, 1000 * 60 * 60 * 3);
 
 function shuffle(array) {
   var currentIndex = array.length,

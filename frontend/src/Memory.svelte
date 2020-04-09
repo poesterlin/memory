@@ -5,7 +5,11 @@
     running,
     port,
     myTeam,
-    isMaster
+    isMaster,
+    mates,
+    registered,
+    me,
+    players as all
   } from "./store.js";
 
   import io from "socket.io-client";
@@ -15,30 +19,35 @@
   const socket = io(server);
   const id = get(playerId);
 
-  // console.log([url, playerId, running, port, myTeam, isMaster].map(get))
-
   let matrix = [];
-  const master = get(isMaster);
+  let master = false;
+  isMaster.subscribe(v => (master = v));
 
   socket.on("matrix", mat => {
     matrix = mat;
   });
   socket.on("disconnect", () => {
     running.set(false);
-    port.set(0);
-    alert("player disconnected");
+    registered.set(false);
+    alert("server disconnected");
+  });
+
+  socket.on("reregister", () => {
+    socket.emit("register", get(me));
   });
 
   let done = false;
-  let hasWon = 0;
+  let hasWon = false;
   socket.on("results", res => {
+    debugger
+    hasWon = get(myTeam) === res;
     done = true;
-    hasWon = myTeam === res;
   });
 
   let myTurn = false;
-  socket.on("turn", ({ turn }) => {
+  socket.on("turn", ({ turn, players }) => {
     myTurn = get(myTeam) === turn;
+    all.set(players);
   });
 
   function flip(row, column) {
@@ -50,9 +59,15 @@
 
   function replay() {
     done = false;
-    socket.emit("replay");
     running.set(false);
-    port.set(0);
+    socket.emit("replay");
+  }
+
+  function endRound() {
+    if (!myTurn) {
+      return;
+    }
+    socket.emit("next");
   }
 </script>
 
@@ -155,7 +170,9 @@
     background: #97d8d8;
   }
 
-  .card0, .card1, .card2{
+  .card0,
+  .card1,
+  .card2 {
     color: white !important;
   }
 
@@ -172,29 +189,63 @@
     background: black !important;
     color: red !important;
   }
+
+  .done {
+    opacity: 0.4;
+    filter: blur(2px) opacity(0.5);
+  }
+
+  button#next {
+    margin: 120px auto 40vh;
+    display: block;
+    height: 60px;
+    font-size: 20px;
+    border-radius: 50px;
+    background: #7ec2c2;
+    box-shadow: 20px 20px 60px #6ba5a5, -20px -20px 60px #91dfdf;
+    color: white;
+  }
 </style>
 
 <div class="header">
   <span id="text">
-    {myTurn ? 'Your teams turn. Flip some cards!' : 'Wait for your oponents to draw...'}
+    {myTurn ? 'Your teams turn!' : 'Wait for your opponents to draw...'}
   </span>
   <span>{$myTeam === 1 ? 'You`re Red' : 'You`re Blue'}</span>
+  <span>
+    (
+    {#each $mates as p, index}
+      {p.name + (index + 1 < $mates.length ? ', ' : '')}
+    {/each}
+    )
+  </span>
 </div>
 <table>
   {#each matrix as row, rowIdx}
     <tr>
       {#each row as item, colIdx}
         <td>
-          <button
-            class={item.done || master ? 'card' + item.team : ''}
-            on:click={() => flip(rowIdx, colIdx)}>
-            {item.word}
-          </button>
+          {#if master}
+            <button class={'card' + item.team} class:done={item.done}>
+              {item.word}
+            </button>
+          {:else}
+            <button
+              class={item.done ? 'card' + item.team : ''}
+              on:click={() => flip(rowIdx, colIdx)}>
+              {item.word}
+            </button>
+          {/if}
+
         </td>
       {/each}
     </tr>
   {/each}
 </table>
+
+{#if !master && myTurn}
+  <button on:click={endRound} id="next">Next Round</button>
+{/if}
 
 {#if done}
   <div class="background">
