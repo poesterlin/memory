@@ -39,7 +39,6 @@
   let done = false;
   let hasWon = false;
   socket.on("results", res => {
-    debugger
     hasWon = get(myTeam) === res;
     done = true;
   });
@@ -49,6 +48,36 @@
     myTurn = get(myTeam) === turn;
     all.set(players);
   });
+
+  let mice = [];
+  setTimeout(() => {
+    let table = document.querySelector("table");
+    let tablePos = table.getBoundingClientRect();
+    window.onresize = () => (tablePos = table.getBoundingClientRect());
+    window.onscroll = () => (tablePos = table.getBoundingClientRect());
+
+    socket.on("mouse", data => {
+      (mice = data.filter(m => m.id !== id)).map(d => {
+        d.pos.x *= tablePos.width;
+        d.pos.y *= tablePos.height;
+
+        d.pos.x += tablePos.x;
+        d.pos.y += tablePos.y;
+
+        return d;
+      });
+    });
+
+    table.addEventListener("mousemove", function(e) {
+      return throttle(() => {
+        if (!master) {
+          const x = (e.x - tablePos.x) / tablePos.width;
+          const y = (e.y - tablePos.y) / tablePos.height;
+          socket.emit("move", { pos: { x, y }, id });
+        }
+      }, 100);
+    });
+  }, 100);
 
   function flip(row, column) {
     if (!myTurn || matrix[row][column].done || master) {
@@ -61,6 +90,17 @@
     done = false;
     running.set(false);
     socket.emit("replay");
+  }
+
+  function throttle(func, timeFrame) {
+    var lastTime = 0;
+    var now = new Date();
+    if (now - lastTime >= timeFrame) {
+      func();
+      lastTime = now;
+      return;
+    }
+    console.log("nope");
   }
 
   function endRound() {
@@ -132,7 +172,7 @@
   .center {
     margin: auto;
     background: #7ec2c2;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;
@@ -205,6 +245,29 @@
     box-shadow: 20px 20px 60px #6ba5a5, -20px -20px 60px #91dfdf;
     color: white;
   }
+
+  .mouse {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .cursor {
+    background-image: url("/cursor.svg");
+    width: 40px;
+    height: 40px;
+    stroke: blue;
+    mix-blend-mode: hue;
+    background-blend-mode: hue;
+    filter: opacity(0.8);
+  }
+
+  .label {
+    position: absolute;
+    top: 5px;
+    right: -5px;
+    opacity: 0.5;
+    color: inherit;
+  }
 </style>
 
 <div class="header">
@@ -243,6 +306,18 @@
   {/each}
 </table>
 
+{#each mice as mouse}
+  <div
+    class="mouse"
+    style="top: {mouse.pos.y}px; left: {mouse.pos.x}px; filter: sepia(1)
+    hue-rotate({mouse.color}deg) saturate(5) contrast(1.5);">
+    <div class="cursor" />
+    <span class="label" style="color: hsl({mouse.color}, 100%, 70%);">
+      {mouse.name}
+    </span>
+  </div>
+{/each}
+
 {#if !master && myTurn}
   <button on:click={endRound} id="next">Next Round</button>
 {/if}
@@ -253,7 +328,7 @@
       {#if hasWon}
         <span>🥳🥳🥳 You have won!!</span>
       {:else}
-        <span>You lost... 😞</span>
+        <span>You are the second winner!! 😅😅</span>
       {/if}
       <button id="replay" on:click={replay}>replay</button>
     </div>

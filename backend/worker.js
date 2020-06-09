@@ -55,12 +55,14 @@ app.get("/start", (_req, res) => {
 app.post("/register", (req, res) => {
   if (players.some((p) => p.id === req.body.id)) {
     res.json({ players, team: players.find((p) => p.id === req.body.id).team });
+    console.log("player already registered");
     return;
   }
   const t1 = players.reduce((s, c) => (c.team === 1 ? c.team + s : s), 0);
   const t2 = players.length - t1;
   const team = t1 > t2 ? 2 : 1;
   players.push({ id: req.body.id, name: req.body.name, master: false, team });
+  console.log("player registered", req.body.name, "to team", team);
   res.json({ players, team });
 });
 
@@ -68,6 +70,7 @@ app.post("/elevate", (req, res) => {
   const newP = players.find((p) => p.id === req.body.id);
   players.filter((p) => p.team === newP.team).forEach((p) => (p.master = false));
   newP.master = true;
+  console.log(newP.name, "is master of", newP.team);
   res.json({ players });
   try {
     updateTurns();
@@ -83,6 +86,8 @@ let started = false;
 let turn = 1;
 let matrix = initMatrix(workerData.size || 5);
 
+let mouse = new Map();
+
 io.on("connect", function (socket) {
   socket.join(room);
   updateMatrix();
@@ -90,8 +95,14 @@ io.on("connect", function (socket) {
 
   socket.on("next", function () {
     turn = turn === 1 ? 2 : 1;
+    console.log("next round", turn);
     updateTurns();
   });
+
+  socket.on("move", ({ pos, id }) => {
+    mouse.set(id, pos);
+  });
+
   socket.on("flip", function ({ row, column, team }) {
     if (players.length < 1) {
       return;
@@ -102,11 +113,14 @@ io.on("connect", function (socket) {
 
     const cell = matrix[row][column];
     cell.done = true;
+    console.log("team", team, "picked", cell.word);
     if (cell.team === 3) {
+      console.log("oof black card was hit...");
       replay(team === 1 ? 2 : 1);
       return;
     }
     if (cell.team !== team) {
+      console.log("wrong card");
       turn = turn === 1 ? 2 : 1;
     }
 
@@ -161,7 +175,24 @@ function replay(team) {
   matrix.forEach((row) => row.forEach((cell) => (cell.done = true)));
   updateMatrix();
   started = false;
+  console.log("team", team, "won");
 }
+
+setInterval(() => {
+  const mice = Array.from(mouse.entries())
+    .map(([key, value]) => {
+      const p = players.find((p) => p && p.id === key);
+      if (!p) {
+        return;
+      }
+      const name = p.name;
+      return { color: parseInt(crypto.createHash("md5").update(name).digest("hex"), 16) % 360, pos: value, name, id: key };
+    })
+    .filter((m) => !!m);
+  if (started && mice.length > 0) {
+    io.to(room).emit("mouse", mice);
+  }
+}, 300);
 
 function updateMatrix() {
   io.to(room).emit("matrix", matrix);
