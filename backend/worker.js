@@ -22,7 +22,7 @@ const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 app.use(
   bodyParser.urlencoded({
-    extended: true
+    extended: true,
   })
 );
 
@@ -49,7 +49,7 @@ app.get("/:id", (req, res) => {
   res.status(200).send(buildSvg(req.params.id));
 });
 
-server.listen(workerData.port, function() {
+server.listen(workerData.port, function () {
   console.log("worker started", workerData);
 });
 
@@ -60,12 +60,12 @@ console.log(pairs);
 let turn = 0;
 let flips = 0;
 
-io.on("connect", function(socket) {
+io.on("connect", function (socket) {
   socket.join(room);
   updateMatrix();
   updateTurns();
 
-  socket.on("flip", function({ row, column, id }) {
+  socket.on("flip", function ({ row, column, id }) {
     if (players.length < 2) {
       return;
     }
@@ -101,12 +101,16 @@ io.on("connect", function(socket) {
     updateMatrix();
     turn = (turn + 1) % 2;
     flips = 0;
-    players.forEach(p => (p.points = 0));
+    players.forEach((p) => (p.points = 0));
     updateTurns();
   });
   socket.on("disconnect", () => {
     console.log("disconnected");
     process.exit();
+  });
+  socket.on("message", ({emoji, id}) => {
+    io.in(room).emit("message", {emoji, id});
+    console.log("message", {emoji, id});
   });
 });
 
@@ -119,7 +123,7 @@ function updateTurns() {
   io.in(room).emit("turn", {
     player: (players[turn] || { id: 0 }).id,
     toFlip: 2 - flips,
-    players
+    players,
   });
 }
 
@@ -128,8 +132,8 @@ function updateMatrix() {
 }
 
 function resetAll() {
-  matrix.forEach(row =>
-    row.forEach(card => {
+  matrix.forEach((row) =>
+    row.forEach((card) => {
       card.flipped = card.complete;
     })
   );
@@ -137,8 +141,8 @@ function resetAll() {
 
 function foundPair() {
   let flipped = [];
-  matrix.forEach(row =>
-    row.forEach(card => {
+  matrix.forEach((row) =>
+    row.forEach((card) => {
       if (card.flipped && !card.complete) {
         flipped.push(card);
       }
@@ -147,12 +151,12 @@ function foundPair() {
   if (flipped.length < 2) {
     return false;
   }
-  flipped.forEach(card => {
+  flipped.forEach((card) => {
     card.emojiCode =
       card.emojiCode ||
       card.img
         .split("")
-        .map(e => e.charCodeAt(0))
+        .map((e) => e.charCodeAt(0))
         .join("");
   });
   const res = flipped[0].emojiCode === flipped[1].emojiCode;
@@ -192,7 +196,7 @@ function initMatrix(size) {
   return new Array(size).fill(null).map((_, row) =>
     new Array(size).fill(null).map((_, col) => {
       const nr = row * size + col;
-      const id = Math.floor(vals.findIndex(i => i === nr) / 2);
+      const id = Math.floor(vals.findIndex((i) => i === nr) / 2);
       return { flipped: false, img: emoji[toBytes(base + id)], complete: false };
     })
   );
@@ -214,7 +218,7 @@ function buildSvg(id) {
   const chart = [
     `<circle cx="${c[0]}" cy="${c[4]}" r="${c[0] / 2}" stroke="black" stroke-width="3" fill="#${toHex(c[2], c[1], c[7], c[2])}" />`,
     `<circle cx="${c[2]}" cy="${c[4]}" r="${c[0] / 5}" stroke="black" stroke-width="3" fill="#${toHex(c[7], c[1], c[5], c[5])}" />`,
-    `<circle cx="${c[2]}" cy="${c[6]}" r="${c[2] / 3}" stroke="black" stroke-width="3" fill="#${toHex(c[3], c[1], c[4], c[2])}" />`
+    `<circle cx="${c[2]}" cy="${c[6]}" r="${c[2] / 3}" stroke="black" stroke-width="3" fill="#${toHex(c[3], c[1], c[4], c[2])}" />`,
   ];
 
   return header + chart.join("") + footer;

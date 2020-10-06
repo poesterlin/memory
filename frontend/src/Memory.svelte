@@ -2,6 +2,8 @@
   import { url, id as playerId, running, port } from "./store.js";
   import io from "socket.io-client";
   import { get } from "svelte/store";
+  import Fab from "./Fab.svelte";
+  import { flip as anim } from "svelte/animate";
 
   const server = get(url);
   const socket = io(server);
@@ -9,6 +11,8 @@
   const id = get(playerId);
 
   let matrix = [];
+  let messageRecieved = "";
+  let showMessage = false;
 
   socket.on("matrix", mat => {
     matrix = mat;
@@ -19,6 +23,18 @@
     running.set(false);
     port.set(0);
     alert("player disconnected");
+  });
+  socket.on("message", data => {
+    if (id !== data.id) {
+      messageRecieved = data.emoji;
+      setTimeout(() => {
+        messageRecieved = "";
+      showMessage = false;
+      }, 2000);
+      setTimeout(() => {
+        showMessage = true;
+      }, 20);
+    }
   });
 
   let myTurn = false;
@@ -67,6 +83,11 @@
     done = false;
     socket.emit("replay");
   }
+
+  function chat(event) {
+    const message = event.detail;
+    socket.emit("message", { emoji: message, id });
+  }
 </script>
 
 <style>
@@ -76,8 +97,8 @@
     padding: 0;
     margin: 0;
     border: 0;
-    max-width: calc(22vw - 5px);
-    max-height: calc(22vw - 5px);
+    max-width: calc(22vmin - 5px);
+    max-height: calc(22vmin - 5px);
     box-shadow: 5px 5px 10px #70adad, -5px -5px 10px #8cd7d7;
     background: linear-gradient(145deg, #71afaf, #87d0d0);
     border-radius: 12px;
@@ -94,7 +115,7 @@
   }
 
   table {
-    margin: 50px auto;
+    margin: 5vmin auto;
     background: transparent;
   }
 
@@ -189,6 +210,23 @@
   #replay:hover {
     background: #97d8d8;
   }
+
+  .message {
+    position: fixed;
+    top: 20px;
+    right: -100px;
+    font-size: 50px;
+    background: white;
+    padding: 10px;
+    border-radius: 30px;
+    border-bottom-right-radius: 0px;
+    line-height: 60px;
+    transition: all 300ms cubic-bezier(0.02, 0.87, 0.66, 1.06);
+  }
+  .message.show {
+    display: block;
+    right: 30px;
+  }
 </style>
 
 <div class="header">
@@ -235,3 +273,6 @@
     </div>
   </div>
 {/if}
+
+<Fab on:message={chat} />
+<div class:show={showMessage} class="message">{messageRecieved}</div>

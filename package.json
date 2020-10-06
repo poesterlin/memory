@@ -7,7 +7,7 @@
     "start": "node --experimental-worker backend/index.js",
     "dev": "env NODE_ENV=development nodemon -x \"node --experimental-worker\" backend/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build":"cd frontend && npm run build && cd -",
+    "build": "cd frontend && npm run build && cd -",
     "server-dev": "npm run build && docker build -t memory . && docker run --env-file ./env.list -p 3000:3000 -p 8000-9000:8000-9000 memory",
     "server": "npm run build && docker build -t memory . && docker run -d --env-file ./env.list -p 80:3000 -p 8000-9000:8000-9000 memory",
     "pm": "npm run build && pm2 start npm -- start"
