@@ -21,7 +21,31 @@
 
   let matrix = [];
   let master = false;
-  isMaster.subscribe(v => (master = v));
+  isMaster.subscribe(v => {
+    master = v;
+    if (!master) {
+      return;
+    }
+    console.log(
+      `blue = [${matrix
+        .flatMap(r => r.filter(c => c.team === 1))
+        .map(w => `"${w.word}"`)
+        .join(", ")}]`
+    );
+    console.log(
+      `red = [${matrix
+        .flatMap(r => r.filter(c => c.team === 2))
+        .map(w => `"${w.word}"`)
+        .join(", ")}]`
+    );
+    console.log(
+      `forbidden = [${
+        matrix
+          .flatMap(r => r.filter(c => c.team === 3))
+          .map(w => `"${w.word}"`)[0]
+      }]`
+    );
+  });
 
   socket.on("matrix", mat => {
     matrix = mat;

@@ -226,13 +226,19 @@ function initMatrix(size) {
   const team2 = teams.splice(7 + starter, 7 + !starter);
   const forbidden = teams[teams.length - 1];
 
-  return new Array(size).fill(null).map((_, row) =>
+  const matrix = new Array(size).fill(null).map((_, row) =>
     new Array(size).fill(null).map((_, col) => {
       const nr = row * size + col;
       const team = team1.includes(nr) ? 1 : team2.includes(nr) ? 2 : forbidden === nr ? 3 : 0;
       return { word: vals[nr], team, done: false };
     })
   );
+
+  console.log(`blue = [${matrix.flatMap((r) => r.filter((c) => c.team === 1)).map(w=>`"${w.word}"`).join(', ')}]`);
+  console.log(`red = [${matrix.flatMap((r) => r.filter((c) => c.team === 2)).map(w=>`"${w.word}"`).join(', ')}]`);
+  console.log(`forbidden = [${matrix.flatMap((r) => r.filter((c) => c.team === 3)).map(w=>`"${w.word}"`)[0]}]`);
+
+  return matrix;
 }
 
 setTimeout(() => {
