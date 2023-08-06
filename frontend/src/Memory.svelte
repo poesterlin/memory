@@ -1,13 +1,11 @@
 <script>
-  import { url, id as playerId } from "./store.js";
+  import { url, id, running } from "./store.js";
   import io from "socket.io-client";
   import { get } from "svelte/store";
   import Fab from "./Fab.svelte";
 
   const server = get(url);
   const socket = io(server);
-
-  const id = get(playerId);
 
   let matrix = [];
   let messageRecieved = "";
@@ -19,10 +17,13 @@
     isDone();
   });
   socket.on("disconnect", () => {
-    alert("player disconnected");
+    running.set(false);
+  });
+  socket.on("reconnect", () => {
+    running.set(false);
   });
   socket.on("message", (data) => {
-    if (id !== data.id) {
+    if ($id !== data.id) {
       messageRecieved = data.emoji;
       setTimeout(() => {
         messageRecieved = "";
@@ -39,11 +40,12 @@
   let ownPoints = 0;
   let opponentPoints = 0;
   let lastFlip = {};
+
   socket.on("turn", ({ player, toFlip, players }) => {
-    myTurn = player === id;
+    myTurn = player === $id;
     flips = toFlip;
-    ownPoints = players.find((p) => p.id === id).points;
-    opponentPoints = players.find((p) => p.id !== id).points;
+    ownPoints = players.find((p) => p.id === $id).points;
+    opponentPoints = players.find((p) => p.id !== $id).points;
     if (!myTurn) {
       lastFlip = {};
     }
@@ -59,7 +61,7 @@
     }
     lastFlip = { row, column };
     flips--;
-    socket.emit("flip", { row, column, id });
+    socket.emit("flip", { row, column, id: $id });
     checkIfWon();
     isDone();
   }
@@ -83,7 +85,7 @@
 
   function chat(event) {
     const message = event.detail;
-    socket.emit("message", { emoji: message, id });
+    socket.emit("message", { emoji: message, id: $id });
   }
 </script>
 
@@ -158,6 +160,10 @@
     box-shadow: inset 5px 5px 10px #70adad55, inset -5px -5px 10px #8cd7d777 !important;
   }
 
+  button {
+    transition: transform 0.2s ease-in-out, color 0.1s linear 0.1s;
+  }
+
   td {
     padding: 5px;
   }
@@ -181,6 +187,11 @@
 
   .hide {
     color: transparent;
+    transform: rotateY(180deg);
+  }
+
+  button:not(.hide) {
+    transform: rotateY(0);
   }
 
   #flips {

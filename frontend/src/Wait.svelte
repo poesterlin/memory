@@ -12,7 +12,7 @@
       const url = `/players`;
       const req = await fetch(url);
       const res = await req.json();
-      if (res.nr === 2) {
+      if (res.nr >= 2) {
         running.set(true);
         clearInterval(int);
       }
