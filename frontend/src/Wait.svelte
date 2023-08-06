@@ -1,33 +1,58 @@
 <script>
   export let isPrivate = false;
   import { fly } from "svelte/transition";
-  import { running, url, id } from "./store.js";
+  import { running, id } from "./store.js";
   import { get } from "svelte/store";
+  import { onMount } from "svelte";
 
-  let server = "";
-  url.subscribe(u => (server = u));
-  async function register() {
-    await new Promise(res => setTimeout(res, 400));
-    const req = await fetch(server + "/register", {
-      method: "POST",
-      body: JSON.stringify({ id: get(id) }),
-      headers: {
-        "Content-Type": "application/json"
+  onMount(() => {
+    register();
+
+    const int = setInterval(async () => {
+      const url = `/players`;
+      const req = await fetch(url);
+      const res = await req.json();
+      if (res.nr === 2) {
+        running.set(true);
+        clearInterval(int);
       }
+    }, 1000);
+  });
+
+  async function register() {
+    await new Promise((res) => setTimeout(res, 400));
+    await fetch("/register", {
+      method: "POST",
+      body: JSON.stringify({ id: $id }),
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
   }
-
-  register();
-  const int = setInterval(async () => {
-    const url = server + `/players`;
-    const req = await fetch(url);
-    const res = await req.json();
-    if (res.nr === 2) {
-      running.set(true);
-      clearInterval(int);
-    }
-  }, 1000);
 </script>
+
+<div class="background">
+  <div class="center">
+    <span>Waiting for other player to join...</span>
+    <div class="lds-grid">
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
+      <div />
+    </div>
+
+    {#if isPrivate}
+      <p transition:fly={{ y: 100, duration: 600 }}>
+        Invite code was coppied to clipboard
+      </p>
+    {/if}
+  </div>
+</div>
 
 <style>
   .lds-grid {
@@ -142,27 +167,3 @@
     margin-top: 3%;
   }
 </style>
-
-<div class="background">
-  <div class="center">
-    <span>Waiting for other player to join...</span>
-    <div class="lds-grid">
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-      <div />
-    </div>
-
-    {#if isPrivate}
-      <p transition:fly={{ y: 100, duration: 600 }}>
-        Invite code was coppied to clipboard
-      </p>
-    {/if}
-
-  </div>
-</div>

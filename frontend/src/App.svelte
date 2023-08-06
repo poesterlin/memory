@@ -1,20 +1,20 @@
 <script>
   import { running } from "./store.js";
-  import StartGame from "./StartGame.svelte";
+  import Wait from "./Wait.svelte";
   import Memory from "./Memory.svelte";
 
   let game = { running: false };
-  running.subscribe(val => (game.running = val));
+  running.subscribe((val) => (game.running = val));
 </script>
+
+{#if game.running}
+  <Memory />
+{:else}
+  <Wait />
+{/if}
 
 <style>
   :global(body) {
     background: #7ec2c2;
   }
 </style>
-
-{#if game.running}
-  <Memory />
-{:else}
-  <StartGame />
-{/if}

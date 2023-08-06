@@ -1,0 +1,22 @@
+# docker-compose file
+
+version: '3.7'
+services:
+  memory:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.memory.rule=Host(`memory.homelab`)"
+      - "traefik.http.services.memory.loadbalancer.server.port=8000"
+    restart: unless-stopped
+    # networks:
+    #   - traefik_web
+
+
+# networks:
+#   traefik_web:
+#     external: true

@@ -39,14 +39,6 @@ export default {
     postcss({
       extract: true,
       minimize: true,
-      use: [
-        [
-          "sass",
-          {
-            includePaths: ["./src/theme", "./node_modules"],
-          },
-        ],
-      ],
     }),
 
     // In dev mode, call `npm run start` once

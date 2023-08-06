@@ -1,9 +1,8 @@
 <script>
-  import { url, id as playerId, running, port } from "./store.js";
+  import { url, id as playerId } from "./store.js";
   import io from "socket.io-client";
   import { get } from "svelte/store";
   import Fab from "./Fab.svelte";
-  import { flip as anim } from "svelte/animate";
 
   const server = get(url);
   const socket = io(server);
@@ -14,22 +13,20 @@
   let messageRecieved = "";
   let showMessage = false;
 
-  socket.on("matrix", mat => {
+  socket.on("matrix", (mat) => {
     matrix = mat;
     checkIfWon();
     isDone();
   });
   socket.on("disconnect", () => {
-    running.set(false);
-    port.set(0);
     alert("player disconnected");
   });
-  socket.on("message", data => {
+  socket.on("message", (data) => {
     if (id !== data.id) {
       messageRecieved = data.emoji;
       setTimeout(() => {
         messageRecieved = "";
-      showMessage = false;
+        showMessage = false;
       }, 2000);
       setTimeout(() => {
         showMessage = true;
@@ -40,13 +37,13 @@
   let myTurn = false;
   let flips = 0;
   let ownPoints = 0;
-  let oponentPoints = 0;
+  let opponentPoints = 0;
   let lastFlip = {};
   socket.on("turn", ({ player, toFlip, players }) => {
     myTurn = player === id;
     flips = toFlip;
-    ownPoints = players.find(p => p.id === id).points;
-    oponentPoints = players.find(p => p.id !== id).points;
+    ownPoints = players.find((p) => p.id === id).points;
+    opponentPoints = players.find((p) => p.id !== id).points;
     if (!myTurn) {
       lastFlip = {};
     }
@@ -69,13 +66,13 @@
 
   let hasWon = 0;
   function checkIfWon() {
-    hasWon = Math.sign(ownPoints - oponentPoints);
+    hasWon = Math.sign(ownPoints - opponentPoints);
   }
 
   let done = false;
   function isDone() {
     done =
-      matrix.flat().filter(tile => tile.flipped).length ===
+      matrix.flat().filter((tile) => tile.flipped).length ===
       matrix.flat().length;
   }
 
@@ -89,6 +86,57 @@
     socket.emit("message", { emoji: message, id });
   }
 </script>
+
+<div class="header">
+  <span id="text">
+    {myTurn
+      ? "It`s my turn. Flip some cards!"
+      : "Wait for your oponent to draw..."}
+  </span>
+  <span id="points">
+    Points:
+    <span>{ownPoints}</span>
+    vs
+    <span>{opponentPoints}</span>
+  </span>
+
+  <span id="flips" class:hide={!myTurn}>Flips left: {flips}</span>
+</div>
+<table>
+  {#each matrix as row, rowIdx}
+    <tr>
+      {#each row as item, colIdx}
+        <td>
+          <button
+            class:noHover={!myTurn}
+            class:hide={!item.flipped}
+            on:click={() => flip(rowIdx, colIdx)}
+          >
+            {item.img}
+          </button>
+        </td>
+      {/each}
+    </tr>
+  {/each}
+</table>
+
+{#if done}
+  <div class="background">
+    <div class="center">
+      {#if hasWon === 1}
+        <span>🥳🥳🥳 You have won!!</span>
+      {:else if hasWon === 0}
+        <span>Its a draw 🤷‍♀️</span>
+      {:else if hasWon === -1}
+        <span>You lost... 😞</span>
+      {/if}
+      <button id="replay" on:click={replay}>replay</button>
+    </div>
+  </div>
+{/if}
+
+<Fab on:message={chat} />
+<div class:show={showMessage} class="message">{messageRecieved}</div>
 
 <style>
   button:not(#replay) {
@@ -228,51 +276,3 @@
     right: 30px;
   }
 </style>
-
-<div class="header">
-  <span id="text">
-    {myTurn ? 'It`s my turn. Flip some cards!' : 'Wait for your oponent to draw...'}
-  </span>
-  <span id="points">
-    Points:
-    <span>{ownPoints}</span>
-    vs
-    <span>{oponentPoints}</span>
-  </span>
-
-  <span id="flips" class:hide={!myTurn}>Flips left: {flips}</span>
-</div>
-<table>
-  {#each matrix as row, rowIdx}
-    <tr>
-      {#each row as item, colIdx}
-        <td>
-          <button
-            class:noHover={!myTurn}
-            class:hide={!item.flipped}
-            on:click={() => flip(rowIdx, colIdx)}>
-            {item.img}
-          </button>
-        </td>
-      {/each}
-    </tr>
-  {/each}
-</table>
-
-{#if done}
-  <div class="background">
-    <div class="center">
-      {#if hasWon === 1}
-        <span>🥳🥳🥳 You have won!!</span>
-      {:else if hasWon === 0}
-        <span>Its a draw 🤷‍♀️</span>
-      {:else if hasWon === -1}
-        <span>You lost... 😞</span>
-      {/if}
-      <button id="replay" on:click={replay}>replay</button>
-    </div>
-  </div>
-{/if}
-
-<Fab on:message={chat} />
-<div class:show={showMessage} class="message">{messageRecieved}</div>

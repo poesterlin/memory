@@ -1,12 +1,6 @@
-import { writable, derived } from "svelte/store";
+import { writable, readable } from "svelte/store";
 
 export const port = writable(0);
-export const running = writable(false);
-
-const loc = document.location;
-export const url = derived(
-  port,
-  $port => `${loc.protocol}//${loc.hostname}:${$port}`
-);
-
+export const url = readable('/');
 export const id = writable(Math.ceil(Math.random() * 10000))
+export const running = writable(false);
