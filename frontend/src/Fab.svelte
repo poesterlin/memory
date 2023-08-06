@@ -20,7 +20,7 @@
     height: 70px;
     background-color: #0097a7;
     border-radius: 50%;
-    box-shadow: 0 6px 10px 0 #666;
+    box-shadow: 0 6px 10px 0 #66666660;
     transition: all 0.1s ease-in-out;
     font-size: 50px;
     color: white;
