@@ -13,10 +13,10 @@ services:
       - "traefik.http.routers.memory.rule=Host(`memory.homelab`)"
       - "traefik.http.services.memory.loadbalancer.server.port=8000"
     restart: unless-stopped
-    # networks:
-    #   - traefik_web
+    networks:
+      - traefik_web
 
 
-# networks:
-#   traefik_web:
-#     external: true
+networks:
+  traefik_web:
+    external: true
