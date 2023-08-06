@@ -3,6 +3,7 @@
   import io from "socket.io-client";
   import { get } from "svelte/store";
   import Fab from "./Fab.svelte";
+  import MemoryCard from "./memory-card.svelte";
 
   const server = get(url);
   const socket = io(server);
@@ -87,6 +88,10 @@
     const message = event.detail;
     socket.emit("message", { emoji: message, id: $id });
   }
+
+  function restart() {
+    socket.emit("replay");
+  }
 </script>
 
 <div class="header">
@@ -102,20 +107,18 @@
     <span>{opponentPoints}</span>
   </span>
 
-  <span id="flips" class:hide={!myTurn}>Flips left: {flips}</span>
+  {#if !myTurn}
+    <span id="flips">Flips left: {flips}</span>
+  {/if}
+
+  <button on:click={restart}>restart</button>
 </div>
 <table>
   {#each matrix as row, rowIdx}
     <tr>
       {#each row as item, colIdx}
         <td>
-          <button
-            class:noHover={!myTurn}
-            class:hide={!item.flipped}
-            on:click={() => flip(rowIdx, colIdx)}
-          >
-            {item.img}
-          </button>
+          <MemoryCard {item} {myTurn} on:flip={() => flip(rowIdx, colIdx)} />
         </td>
       {/each}
     </tr>
@@ -141,28 +144,7 @@
 <div class:show={showMessage} class="message">{messageRecieved}</div>
 
 <style>
-  button:not(#replay) {
-    width: 200px;
-    height: 200px;
-    padding: 0;
-    margin: 0;
-    border: 0;
-    max-width: calc(22vmin - 5px);
-    max-height: calc(22vmin - 5px);
-    box-shadow: 5px 5px 10px #70adad, -5px -5px 10px #8cd7d7;
-    background: linear-gradient(145deg, #71afaf, #87d0d0);
-    border-radius: 12px;
-    font-size: 40px;
-    user-select: none;
-  }
-
-  button:hover:not(.noHover) {
-    box-shadow: inset 5px 5px 10px #70adad55, inset -5px -5px 10px #8cd7d777 !important;
-  }
-
-  button {
-    transition: transform 0.2s ease-in-out, color 0.1s linear 0.1s;
-  }
+  
 
   td {
     padding: 5px;
@@ -185,14 +167,7 @@
     text-shadow: 3px 4px 8px #00000012;
   }
 
-  .hide {
-    color: transparent;
-    transform: rotateY(180deg);
-  }
 
-  button:not(.hide) {
-    transform: rotateY(0);
-  }
 
   #flips {
     color: #f0f0f0;
