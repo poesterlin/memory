@@ -111,7 +111,7 @@
     <span id="flips">Flips left: {flips}</span>
   {/if}
 
-  <button on:click={restart}>restart</button>
+  <button id="restart" on:click={restart}>restart</button>
 </div>
 <table>
   {#each matrix as row, rowIdx}
@@ -144,8 +144,6 @@
 <div class:show={showMessage} class="message">{messageRecieved}</div>
 
 <style>
-  
-
   td {
     padding: 5px;
   }
@@ -167,7 +165,15 @@
     text-shadow: 3px 4px 8px #00000012;
   }
 
-
+  #restart {
+    padding: 2px 13px 5px;
+    margin: 0;
+    border: 0;
+    border-radius: 13px;
+    font-size: 80%;
+    cursor: pointer;
+    background: #c9e8e8;
+  }
 
   #flips {
     color: #f0f0f0;
